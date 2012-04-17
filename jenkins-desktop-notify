@@ -1,0 +1,84 @@
+#!/bin/env python
+from json import loads
+from urllib import urlopen
+from urlparse import urljoin
+from itertools import imap
+from subprocess import Popen
+from sys import argv, exit
+from time import sleep
+
+
+def get_jobs(jenkins_url):
+    def make_job(job):
+        return {
+                    'url': job.get('url'),
+                    'name': job.get('name')
+                }
+
+    jobs = ask(jenkins_url)
+    return imap(make_job, jobs.get('jobs'))
+
+
+def jobs_running_info(jobs):
+    def make_job(job):
+        return job.get('name'), running(job)
+    return dict((make_job(job) for job in jobs))
+
+
+def running(job):
+    status = get_job_status(job)
+
+    build = get_last_build(status)
+    if build:
+        build_info = ask(build.get('url'))
+        if build_info.get('building'):
+            return "RUNNING"
+        return build_info.get('result')
+    return "UNKNOWN"
+
+
+def get_job_status(job):
+    return ask(job.get('url'))
+
+
+def get_last_build(job_status):
+    def compare(job1, job2):
+        return job1.get('number') < job2.get('number')
+
+    builds = job_status.get('builds')
+    if len(builds) > 0:
+        builds.sort(cmp=compare)
+        return builds[0]
+    else:
+        return None
+
+
+def ask(url):
+    return loads(urlopen(urljoin(url, 'api/json')).read())
+
+
+def notify(message):
+    Popen(['notify-send', message])
+
+
+def report_required(old_job_status, new_job_status, old_status_info):
+    return old_job_status != new_job_status and old_status_info
+
+
+if __name__ == '__main__':
+    if len(argv) < 2:
+        print "Specify Jenkins URL"
+        exit(1)
+    jenkins_url = argv[1]
+
+    old_status_info = {}
+    while True:
+        jobs = get_jobs(jenkins_url)  # there may be new jobs
+        new_status_info = jobs_running_info(jobs)
+        for name, new_job_status in new_status_info.iteritems():
+            old_job_status = old_status_info.get(name)
+            if report_required(old_job_status, new_job_status, old_status_info):
+                notify('Job %s transition %s->%s' % (name, old_job_status, new_job_status))
+
+        old_status_info = new_status_info
+        sleep(5)

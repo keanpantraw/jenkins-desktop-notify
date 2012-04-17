@@ -1,0 +1,5 @@
+Send desktop notifications on jenkins jobs status changes (completion, failure etc)
+
+Run:
+
+./jenkins-desktop-notify <jenkins-url>
