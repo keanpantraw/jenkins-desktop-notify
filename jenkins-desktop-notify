@@ -1,4 +1,4 @@
-#!/bin/env python
+#!/usr/bin/env python
 from json import loads
 from urllib import urlopen
 from urlparse import urljoin
@@ -86,7 +86,7 @@ if __name__ == '__main__':
     if len(argv) < 2:
         print "Specify Jenkins URL"
         exit(1)
-    jenkins_url = argv[1]
+    jenkins_url = argv[1] + '/'
 
     old_status_info = {}
     while True:
