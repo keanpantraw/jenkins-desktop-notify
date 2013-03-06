@@ -26,6 +26,7 @@ def jobs_running_info(jobs):
 
 
 def running(job):
+    print job
     status = get_job_status(job)
 
     build = get_last_build(status)
@@ -46,7 +47,7 @@ def get_last_build(job_status):
         return job1.get('number') < job2.get('number')
 
     builds = job_status.get('builds')
-    if len(builds) > 0:
+    if builds is not None and len(builds) > 0:
         builds.sort(cmp=compare)
         return builds[0]
     else:
@@ -54,7 +55,11 @@ def get_last_build(job_status):
 
 
 def ask(url):
-    return loads(urlopen(urljoin(url, 'api/json')).read())
+    try:
+        return loads(urlopen(urljoin(url, 'api/json')).read())
+    except ValueError:
+        print "Ignoring invalid job info at url %s" % url
+    return {}
 
 
 def notify(message):
