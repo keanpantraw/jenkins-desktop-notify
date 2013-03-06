@@ -26,7 +26,6 @@ def jobs_running_info(jobs):
 
 
 def running(job):
-    print job
     status = get_job_status(job)
 
     build = get_last_build(status)
@@ -45,9 +44,7 @@ def get_job_status(job):
     try:
         url = urljoin(job.get('url'), 'api/json')
         url += '?tree=allBuilds[name,url,result,building,number]'
-        print "Workaroung url: ", url
         r = urlopen(url).read()
-        print r
         return {'builds': loads(r)['allBuilds']}
     except ValueError:
         print "Ignoring invalid job status info at url %s" % job.get('url')
@@ -92,9 +89,6 @@ if __name__ == '__main__':
     while True:
         jobs = get_jobs(jenkins_url)  # there may be new jobs
         new_status_info = jobs_running_info(jobs)
-        print "Status:"
-        print new_status_info
-        print "---------------"
         for name, new_job_status in new_status_info.iteritems():
             old_job_status = old_status_info.get(name)
             if report_required(old_job_status, new_job_status, old_status_info):
