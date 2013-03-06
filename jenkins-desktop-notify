@@ -22,7 +22,7 @@ def get_jobs(jenkins_url):
 def jobs_running_info(jobs):
     def make_job(job):
         return job.get('name'), running(job)
-    return dict((make_job(job) for job in jobs))
+    return dict(make_job(job) for job in jobs)
 
 
 def running(job):
@@ -39,7 +39,19 @@ def running(job):
 
 
 def get_job_status(job):
-    return ask(job.get('url'))
+    # Current upstream jenkins have bug
+    # https://issues.jenkins-ci.org/browse/JENKINS-15713
+    # so, running builds can only be acquired with this ugly workarounc
+    try:
+        url = urljoin(job.get('url'), 'api/json')
+        url += '?tree=allBuilds[name,url,result,building,number]'
+        print "Workaroung url: ", url
+        r = urlopen(url).read()
+        print r
+        return {'builds': loads(r)['allBuilds']}
+    except ValueError:
+        print "Ignoring invalid job status info at url %s" % job.get('url')
+    return {}
 
 
 def get_last_build(job_status):
@@ -80,6 +92,9 @@ if __name__ == '__main__':
     while True:
         jobs = get_jobs(jenkins_url)  # there may be new jobs
         new_status_info = jobs_running_info(jobs)
+        print "Status:"
+        print new_status_info
+        print "---------------"
         for name, new_job_status in new_status_info.iteritems():
             old_job_status = old_status_info.get(name)
             if report_required(old_job_status, new_job_status, old_status_info):
