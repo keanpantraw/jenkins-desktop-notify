@@ -92,7 +92,7 @@ if __name__ == '__main__':
         for name, new_job_status in new_status_info.iteritems():
             old_job_status = old_status_info.get(name)
             if report_required(old_job_status, new_job_status, old_status_info):
-                notify('Job %s transition %s->%s' % (name, old_job_status, new_job_status))
+                notify('Job %s is %s' % (name, new_job_status))
 
         old_status_info = new_status_info
         sleep(5)
