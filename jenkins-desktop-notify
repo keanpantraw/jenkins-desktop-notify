@@ -1,6 +1,7 @@
 #!/usr/bin/env python
+import base64
+import urllib2
 from json import loads
-from urllib import urlopen
 from urlparse import urljoin
 from itertools import imap
 from subprocess import Popen
@@ -8,13 +9,19 @@ from sys import argv, exit
 from time import sleep
 
 
-def get_jobs(jenkins_url):
+def get_jobs(config):
     def make_job(job):
         return {'url': job.get('url'),
                 'name': job.get('name')}
 
-    jobs = ask(jenkins_url)
-    return imap(make_job, jobs.get('jobs'))
+    jobs = ask(config['jenkins url'])
+    if config.get('jobs'):
+        jobs = [job for job in jobs['jobs']
+                if job.get('name') in config['jobs']]
+        print jobs
+    else:
+        jobs = jobs['jobs']
+    return imap(make_job, jobs)
 
 
 def jobs_running_info(jobs):
@@ -42,10 +49,10 @@ def get_job_status(job):
     try:
         url = urljoin(job.get('url'), 'api/json')
         url += '?tree=allBuilds[name,url,result,building,number]'
-        r = urlopen(url).read()
+        r = urllib2.urlopen(url).read()
         return {'builds': loads(r)['allBuilds']}
-    except ValueError:
-        print "Ignoring invalid job status info at url %s" % job.get('url')
+    except (ValueError, urllib2.URLError):
+        print "Ignoring invalid job status info at url %s" % url
     return {}
 
 
@@ -63,7 +70,9 @@ def get_last_build(job_status):
 
 def ask(url):
     try:
-        return loads(urlopen(urljoin(url, 'api/json')).read())
+        request_url = urljoin(url + '/', 'api/json')
+        response = urllib2.urlopen(request_url).read()
+        return loads(response)
     except ValueError:
         print "Ignoring invalid job info at url %s" % url
     return {}
@@ -77,17 +86,40 @@ def report_required(old_job_status, new_job_status, old_status_info):
     return old_job_status != new_job_status and old_status_info
 
 
+def try_parse_config(config_location):
+    try:
+        with open(config_location) as config:
+            return loads(config.read())
+    except IOError as e:
+        print e, "Proceeding without config"
+    return {}
+
+
+def configure_auth(config):
+    if not 'jenkins url' in config:
+        raise RuntimeError('Please specify jenkins URL in config, '
+                           'use "jenkins url": "<URL to jenkins>"')
+
+    if ('user' in config) and ('password' in config):
+        opener = urllib2.build_opener()
+        auth = '%s:%s' % (config['user'], config['password'])
+        auth = base64.standard_b64encode(auth)
+        opener.addheaders += [('Authorization', 'Basic ' + auth)]
+        urllib2.install_opener(opener)
+
+
 if __name__ == '__main__':
     if len(argv) < 2:
-        print "Specify Jenkins URL"
+        print "Specify config location"
         exit(1)
-    jenkins_url = argv[1] + '/'
+    config = try_parse_config(argv[1])
+    configure_auth(config)
 
     old_status_info = {}
 
     while True:
         notifications = []
-        jobs = get_jobs(jenkins_url)  # there may be new jobs
+        jobs = get_jobs(config)  # there may be new jobs
         new_status_info = jobs_running_info(jobs)
         for name, new_job_status in new_status_info.iteritems():
             old_job_status = old_status_info.get(name)
