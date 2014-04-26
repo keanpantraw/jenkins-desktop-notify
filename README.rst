@@ -27,3 +27,10 @@ Config file is a simple json file::
 
 
 where jenkins url is url pointing to specific view, for example ``http://127.0.0.1:8080/view/All``
+
+
+Alternative
+-----------
+
+Alternatively, instead of this script you can use Jenkins RSS and some of available RSS readers 
+(unfortunately, I was unaware of Jenkins RSS when I've wrote this script :)
