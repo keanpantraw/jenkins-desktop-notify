@@ -10,10 +10,8 @@ from time import sleep
 
 def get_jobs(jenkins_url):
     def make_job(job):
-        return {
-                    'url': job.get('url'),
-                    'name': job.get('name')
-                }
+        return {'url': job.get('url'),
+                'name': job.get('name')}
 
     jobs = ask(jenkins_url)
     return imap(make_job, jobs.get('jobs'))
@@ -86,13 +84,18 @@ if __name__ == '__main__':
     jenkins_url = argv[1] + '/'
 
     old_status_info = {}
+
     while True:
+        notifications = []
         jobs = get_jobs(jenkins_url)  # there may be new jobs
         new_status_info = jobs_running_info(jobs)
         for name, new_job_status in new_status_info.iteritems():
             old_job_status = old_status_info.get(name)
-            if report_required(old_job_status, new_job_status, old_status_info):
-                notify('Job %s is %s' % (name, new_job_status))
+            if report_required(old_job_status, new_job_status,
+                               old_status_info):
+                notifications.append('Job %s is %s' % (name, new_job_status))
+        if notifications:
+            notify("\n".join(notifications))
 
         old_status_info = new_status_info
         sleep(5)
