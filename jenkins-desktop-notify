@@ -18,7 +18,6 @@ def get_jobs(config):
     if config.get('jobs'):
         jobs = [job for job in jobs['jobs']
                 if job.get('name') in config['jobs']]
-        print jobs
     else:
         jobs = jobs['jobs']
     return imap(make_job, jobs)
